@@ -33,6 +33,10 @@ const fallbackDoctorProfile: BasicProfile = {
 
 export async function POST(request: NextRequest) {
   try {
+    if (!supabaseServer) {
+      return NextResponse.json({ error: "Database not configured" }, { status: 503 });
+    }
+
     const token = request.cookies.get("sb-auth-token")?.value;
     const isDevMode = process.env.NODE_ENV === "development";
 
@@ -179,6 +183,10 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
+    if (!supabaseServer) {
+      return NextResponse.json({ success: true, data: [], by_status: { pending: [], in_progress: [], completed: [] }, count: 0 });
+    }
+
     const token = request.cookies.get("sb-auth-token")?.value;
     const isDevMode = process.env.NODE_ENV === "development";
 

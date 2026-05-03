@@ -1,8 +1,15 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import { CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
 
 import { StatusBadge } from "@/components/patient/status-badge";
 import { Button } from "@/components/ui/button";
-import { appointmentTimeSlots, pastAppointments } from "@/lib/mock-patient-data";
+
+const appointmentTimeSlots = [
+  "08:30 AM", "09:00 AM", "10:30 AM", "11:15 AM",
+  "01:00 PM", "02:45 PM", "03:30 PM",
+];
 
 const calendarDays = [
   [29, 30, 1, 2, 3, 4, 5],
@@ -12,7 +19,30 @@ const calendarDays = [
   [27, 28, 29, 30, 31, 1, 2],
 ];
 
+const TYPE_LABELS: Record<string, string> = {
+  ULTRASOUND: "Ultrasound Scan",
+  BLOODWORK: "Blood Panel",
+  PROCEDURE: "Procedure",
+  CONSULTATION: "Consultation",
+  FOLLOW_UP: "Follow-up",
+};
+
 export default function PatientAppointmentsPage() {
+  const [appointments, setAppointments] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch("/api/patient/appointments")
+      .then((r) => r.json())
+      .then((data) => setAppointments(data.data ?? []))
+      .catch(() => setAppointments([]))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const past = appointments.filter(
+    (a) => a.status === "COMPLETED" || a.status === "CANCELLED" || a.status === "NO_SHOW"
+  );
+
   return (
     <div className="space-y-10">
       <header>
@@ -136,25 +166,38 @@ export default function PatientAppointmentsPage() {
 
       <section>
         <h2 className="mb-5 text-2xl font-bold text-slate-900">Past Appointments</h2>
-        <div className="space-y-3">
-          {pastAppointments.map((item) => (
-            <article
-              key={item.id}
-              className="flex flex-wrap items-center justify-between gap-4 rounded-2xl bg-white p-5 shadow-sm"
-            >
-              <div>
-                <p className="text-lg font-bold text-slate-900">{item.title}</p>
-                <p className="text-sm text-slate-500">
-                  {item.date} · {item.doctor}
-                </p>
-              </div>
-              <StatusBadge
-                label={item.status}
-                tone={item.status === "Completed" ? "success" : "danger"}
-              />
-            </article>
-          ))}
-        </div>
+        {loading ? (
+          <p className="text-sm text-slate-500">Loading appointments...</p>
+        ) : past.length === 0 ? (
+          <p className="text-sm text-slate-500">No past appointments found.</p>
+        ) : (
+          <div className="space-y-3">
+            {past.map((item: any) => (
+              <article
+                key={item.id}
+                className="flex flex-wrap items-center justify-between gap-4 rounded-2xl bg-white p-5 shadow-sm"
+              >
+                <div>
+                  <p className="text-lg font-bold text-slate-900">
+                    {TYPE_LABELS[item.appointment_type] ?? item.appointment_type}
+                  </p>
+                  <p className="text-sm text-slate-500">
+                    {new Date(item.scheduled_date).toLocaleDateString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                    })}
+                    {item.location ? ` · ${item.location}` : ""}
+                  </p>
+                </div>
+                <StatusBadge
+                  label={item.status === "COMPLETED" ? "Completed" : item.status === "CANCELLED" ? "Cancelled" : "No Show"}
+                  tone={item.status === "COMPLETED" ? "success" : "danger"}
+                />
+              </article>
+            ))}
+          </div>
+        )}
       </section>
     </div>
   );

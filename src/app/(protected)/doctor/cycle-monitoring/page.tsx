@@ -1,10 +1,26 @@
 import { StatusBadge } from "@/components/patient/status-badge";
 import { Button } from "@/components/ui/button";
 import {
-  cycleTimeline,
-  embryoRows,
-  hormoneSeries,
-} from "@/lib/mock-doctor-data";
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+const cycleTimeline = ["Day 1", "Day 4", "Day 7", "Day 9", "Today", "Trigger", "Retrieval"] as const;
+
+const hormoneSeries = {
+  e2: [20, 35, 45, 65, 90],
+  p4: [10, 12, 15, 18, 22],
+  lh: [20, 18, 22, 25, 28],
+};
+
+const embryoRows = [
+  { id: "#EMB-001", d1: "2PN", d3: "8-Cell Grade A", d5: "Expanded", d6: "4AA" },
+  { id: "#EMB-002", d1: "2PN", d3: "Fragmentation 20%", d5: "Delayed", d6: "3BC" },
+  { id: "#EMB-003", d1: "2PN", d3: "10-Cell Grade A", d5: "Hatching", d6: "5AB" },
+];
 
 function MiniTrend({ values }: { values: readonly number[] }) {
   return (
@@ -147,30 +163,28 @@ export default function DoctorCycleMonitoringPage() {
           </div>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left">
-            <thead>
-              <tr className="border-b border-slate-200 text-[10px] font-bold uppercase tracking-widest text-slate-500">
-                <th className="pb-4 px-4">Sample ID</th>
-                <th className="pb-4 px-4">Day 1 (Fert)</th>
-                <th className="pb-4 px-4">Day 3 (Cleave)</th>
-                <th className="pb-4 px-4">Day 5 (Blast)</th>
-                <th className="pb-4 px-4">Day 6 (Grade)</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-200/60 text-sm">
-              {embryoRows.map((row) => (
-                <tr key={row.id}>
-                  <td className="px-4 py-5 font-bold text-slate-900">{row.id}</td>
-                  <td className="px-4 py-5">{row.d1}</td>
-                  <td className="px-4 py-5">{row.d3}</td>
-                  <td className="px-4 py-5">{row.d5}</td>
-                  <td className="px-4 py-5 font-bold text-teal-700">{row.d6}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <Table>
+          <TableHeader>
+            <TableRow className="border-slate-200 bg-slate-50 hover:bg-slate-50">
+              <TableHead className="px-4 py-3 text-[10px] font-bold uppercase tracking-widest text-slate-500">Sample ID</TableHead>
+              <TableHead className="px-4 py-3 text-[10px] font-bold uppercase tracking-widest text-slate-500">Day 1 (Fert)</TableHead>
+              <TableHead className="px-4 py-3 text-[10px] font-bold uppercase tracking-widest text-slate-500">Day 3 (Cleave)</TableHead>
+              <TableHead className="px-4 py-3 text-[10px] font-bold uppercase tracking-widest text-slate-500">Day 5 (Blast)</TableHead>
+              <TableHead className="px-4 py-3 text-[10px] font-bold uppercase tracking-widest text-slate-500">Day 6 (Grade)</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {embryoRows.map((row) => (
+              <TableRow key={row.id} className="border-slate-200/60 hover:bg-slate-50">
+                <TableCell className="px-4 py-5 font-bold text-slate-900">{row.id}</TableCell>
+                <TableCell className="px-4 py-5 text-slate-700">{row.d1}</TableCell>
+                <TableCell className="px-4 py-5 text-slate-700">{row.d3}</TableCell>
+                <TableCell className="px-4 py-5 text-slate-700">{row.d5}</TableCell>
+                <TableCell className="px-4 py-5 font-bold text-teal-700">{row.d6}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
       </section>
     </div>
   );

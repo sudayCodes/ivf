@@ -6,6 +6,10 @@ export async function PUT(
   { params }: { params: Promise<{ adherenceId: string }> }
 ) {
   try {
+    if (!supabaseServer) {
+      return NextResponse.json({ error: "Database not configured" }, { status: 503 });
+    }
+
     const token = request.cookies.get("sb-auth-token")?.value;
     if (!token) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

@@ -7,6 +7,10 @@ export async function PUT(
   context: { params: Promise<{ taskId: string }> }
 ) {
   try {
+    if (!supabaseServer) {
+      return NextResponse.json({ error: "Database not configured" }, { status: 503 });
+    }
+
     const params = await context.params;
     const { taskId } = params;
 

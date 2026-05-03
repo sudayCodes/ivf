@@ -1,10 +1,37 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import { Filter, Upload } from "lucide-react";
 
 import { StatusBadge } from "@/components/patient/status-badge";
 import { Button } from "@/components/ui/button";
-import { complaints } from "@/lib/mock-patient-data";
+
+const SEVERITY_MAP: Record<string, string> = {
+  LOW: "1/5",
+  NORMAL: "2/5",
+  HIGH: "4/5",
+  URGENT: "5/5",
+};
+
+const STATUS_MAP: Record<string, string> = {
+  OPEN: "Open",
+  IN_PROGRESS: "In Progress",
+  RESOLVED: "Resolved",
+  CLOSED: "Closed",
+};
 
 export default function PatientComplaintsPage() {
+  const [complaints, setComplaints] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch("/api/patient/complaints")
+      .then((r) => r.json())
+      .then((data) => setComplaints(data.data ?? []))
+      .catch(() => setComplaints([]))
+      .finally(() => setLoading(false));
+  }, []);
+
   return (
     <div className="space-y-8">
       <header>
@@ -90,36 +117,48 @@ export default function PatientComplaintsPage() {
           </Button>
         </div>
 
-        <div className="space-y-4">
-          {complaints.map((item) => (
-            <article
-              key={item.id}
-              className="rounded-2xl bg-white p-6 shadow-sm"
-            >
-              <div className="mb-2 flex flex-wrap items-center gap-2">
-                <p className="text-xs font-bold text-slate-500">ID: {item.id}</p>
-                <StatusBadge
-                  label={item.status}
-                  tone={item.status === "Open" ? "danger" : "success"}
-                />
-                <p className="text-xs text-slate-500">{item.datetime}</p>
-              </div>
-              <h3 className="text-lg font-bold text-slate-900">{item.title}</h3>
-              <p className="mt-2 text-sm text-slate-600">{item.description}</p>
-              <div className="mt-3 flex flex-wrap gap-2">
-                <StatusBadge label={`Intensity ${item.severity}`} />
-                <StatusBadge label={item.category} />
-              </div>
-
-              <div className="mt-4 rounded-lg bg-slate-100 p-4">
-                <p className="mb-1 text-xs font-bold uppercase tracking-wide text-slate-500">
-                  Clinic Response
-                </p>
-                <p className="text-sm text-slate-700">{item.response}</p>
-              </div>
-            </article>
-          ))}
-        </div>
+        {loading ? (
+          <p className="text-sm text-slate-500">Loading complaints...</p>
+        ) : complaints.length === 0 ? (
+          <p className="text-sm text-slate-500">No complaints logged yet.</p>
+        ) : (
+          <div className="space-y-4">
+            {complaints.map((item: any) => (
+              <article key={item.id} className="rounded-2xl bg-white p-6 shadow-sm">
+                <div className="mb-2 flex flex-wrap items-center gap-2">
+                  <p className="text-xs font-bold text-slate-500">ID: {item.id.slice(0, 8)}</p>
+                  <StatusBadge
+                    label={STATUS_MAP[item.status] ?? item.status}
+                    tone={item.status === "OPEN" ? "danger" : "success"}
+                  />
+                  <p className="text-xs text-slate-500">
+                    {new Date(item.created_at).toLocaleDateString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                    })}
+                  </p>
+                </div>
+                <h3 className="text-lg font-bold text-slate-900">
+                  {item.complaint_text?.slice(0, 60) ?? "Complaint"}
+                  {item.complaint_text?.length > 60 ? "..." : ""}
+                </h3>
+                <p className="mt-2 text-sm text-slate-600">{item.complaint_text}</p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <StatusBadge label={`Severity: ${SEVERITY_MAP[item.severity] ?? item.severity}`} />
+                </div>
+                {item.nurse_notes && (
+                  <div className="mt-4 rounded-lg bg-slate-100 p-4">
+                    <p className="mb-1 text-xs font-bold uppercase tracking-wide text-slate-500">
+                      Clinic Response
+                    </p>
+                    <p className="text-sm text-slate-700">{item.nurse_notes}</p>
+                  </div>
+                )}
+              </article>
+            ))}
+          </div>
+        )}
       </section>
     </div>
   );

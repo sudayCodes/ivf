@@ -1,10 +1,49 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import { UploadCloud } from "lucide-react";
 
 import { StatusBadge } from "@/components/patient/status-badge";
 import { Button } from "@/components/ui/button";
-import { uploadedReports } from "@/lib/mock-patient-data";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 export default function PatientLabReportsPage() {
+  const [results, setResults] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch("/api/patient/results")
+      .then((r) => r.json())
+      .then((data) => setResults(data.data ?? []))
+      .catch(() => setResults([]))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const recentSubmissions = results.slice(0, 5).map((r: any) => ({
+    id: r.id,
+    name: r.result_type ?? "Lab Result",
+    date: new Date(r.result_date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
+    status: r.interpretation ? "Reviewed" : "Processing",
+    reviewer: r.interpretation ? "Reviewed by clinic" : "Awaiting review",
+  }));
+
+  const aiRows = results.slice(0, 3).flatMap((r: any) =>
+    typeof r.result_data === "object" && r.result_data
+      ? Object.entries(r.result_data).slice(0, 1).map(([key, val]) => [
+          key,
+          String(val),
+          "—",
+        ])
+      : []
+  );
+
   return (
     <div className="space-y-8">
       <header>
@@ -58,61 +97,47 @@ export default function PatientLabReportsPage() {
                 <input className="w-full rounded-lg bg-slate-100 p-3 text-sm" type="date" />
               </div>
             </div>
-
-            <div className="mt-6">
-              <div className="mb-2 flex items-center justify-between text-sm">
-                <p className="font-semibold text-emerald-700">
-                  Uploading: hormonal_sept_24.pdf
-                </p>
-                <p className="font-bold">78%</p>
-              </div>
-              <div className="h-3 w-full overflow-hidden rounded-full bg-slate-200">
-                <div className="h-full w-[78%] rounded-full bg-gradient-to-r from-emerald-600 to-emerald-400" />
-              </div>
-            </div>
           </article>
 
-          <article className="overflow-hidden rounded-2xl bg-white shadow-sm">
-            <div className="flex items-center justify-between bg-slate-100 px-6 py-4">
-              <h2 className="font-bold">AI Parsing Preview</h2>
-              <StatusBadge label="Extracting" tone="warning" />
-            </div>
-            <div className="p-6">
-              <table className="w-full min-w-[520px] text-left">
-                <thead>
-                  <tr className="border-b text-sm text-slate-500">
-                    <th className="pb-3">Marker</th>
-                    <th className="pb-3">Result</th>
-                    <th className="pb-3">Unit</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y">
-                  {[
-                    ["Estradiol (E2)", "2450", "pg/mL"],
-                    ["LH", "1.2", "mIU/mL"],
-                    ["Progesterone", "0.8", "ng/mL"],
-                  ].map((row) => (
-                    <tr key={row[0]}>
-                      <td className="py-3 font-semibold">{row[0]}</td>
-                      <td className="py-3">
-                        <input
-                          defaultValue={row[1]}
-                          className="w-20 rounded bg-slate-100 px-2 py-1"
-                        />
-                      </td>
-                      <td className="py-3 text-slate-500">{row[2]}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              <div className="mt-4 flex justify-end gap-2">
-                <Button variant="ghost">Cancel</Button>
-                <Button className="rounded-full bg-emerald-700 hover:bg-emerald-600">
-                  Confirm & Submit
-                </Button>
+          {aiRows.length > 0 && (
+            <article className="overflow-hidden rounded-2xl bg-white shadow-sm">
+              <div className="flex items-center justify-between bg-slate-100 px-6 py-4">
+                <h2 className="font-bold">AI Parsing Preview</h2>
+                <StatusBadge label="Extracting" tone="warning" />
               </div>
-            </div>
-          </article>
+              <div className="p-6">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="hover:bg-transparent">
+                      <TableHead className="pb-3 text-sm font-semibold text-slate-500">Marker</TableHead>
+                      <TableHead className="pb-3 text-sm font-semibold text-slate-500">Result</TableHead>
+                      <TableHead className="pb-3 text-sm font-semibold text-slate-500">Unit</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {aiRows.map((row) => (
+                      <TableRow key={row[0]} className="hover:bg-slate-50">
+                        <TableCell className="py-3 font-semibold">{row[0]}</TableCell>
+                        <TableCell className="py-3">
+                          <input
+                            defaultValue={row[1]}
+                            className="w-20 rounded bg-slate-100 px-2 py-1"
+                          />
+                        </TableCell>
+                        <TableCell className="py-3 text-slate-500">{row[2]}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+                <div className="mt-4 flex justify-end gap-2">
+                  <Button variant="ghost">Cancel</Button>
+                  <Button className="rounded-full bg-emerald-700 hover:bg-emerald-600">
+                    Confirm & Submit
+                  </Button>
+                </div>
+              </div>
+            </article>
+          )}
         </div>
 
         <aside className="space-y-6 lg:col-span-5">
@@ -127,23 +152,29 @@ export default function PatientLabReportsPage() {
 
           <article className="rounded-2xl bg-white p-6 shadow-sm">
             <h3 className="mb-4 text-xl font-bold">Recent Submissions</h3>
-            <div className="space-y-3">
-              {uploadedReports.map((report) => (
-                <div key={report.id} className="rounded-xl bg-slate-100 p-4">
-                  <div className="mb-2 flex items-center justify-between gap-2">
-                    <div>
-                      <p className="text-sm font-bold">{report.name}</p>
-                      <p className="text-xs text-slate-500">{report.date}</p>
+            {loading ? (
+              <p className="text-sm text-slate-500">Loading...</p>
+            ) : recentSubmissions.length === 0 ? (
+              <p className="text-sm text-slate-500">No reports submitted yet.</p>
+            ) : (
+              <div className="space-y-3">
+                {recentSubmissions.map((report) => (
+                  <div key={report.id} className="rounded-xl bg-slate-100 p-4">
+                    <div className="mb-2 flex items-center justify-between gap-2">
+                      <div>
+                        <p className="text-sm font-bold">{report.name}</p>
+                        <p className="text-xs text-slate-500">{report.date}</p>
+                      </div>
+                      <StatusBadge
+                        label={report.status}
+                        tone={report.status === "Reviewed" ? "success" : "warning"}
+                      />
                     </div>
-                    <StatusBadge
-                      label={report.status}
-                      tone={report.status === "Reviewed" ? "success" : "warning"}
-                    />
+                    <p className="text-xs text-slate-500">{report.reviewer}</p>
                   </div>
-                  <p className="text-xs text-slate-500">{report.reviewer}</p>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </article>
         </aside>
       </section>

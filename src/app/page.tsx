@@ -1,11 +1,24 @@
+"use client";
+import dynamic from 'next/dynamic';
 import Link from 'next/link';
+
+const AnimatedGradientBackground = dynamic(
+  () => import('@/components/ui/animated-gradient-background'),
+  { ssr: false }
+);
 
 export default function Home() {
   return (
     <div className="min-h-screen bg-surface flex flex-col p-4 sm:p-8 md:p-12 relative overflow-hidden">
-      {/* Abstract Background Decoration */}
-      <div className="absolute top-0 right-0 -mr-20 -mt-20 w-96 h-96 rounded-full bg-secondary-container opacity-20 blur-3xl mix-blend-multiply"></div>
-      <div className="absolute bottom-0 left-0 -ml-20 -mb-20 w-[30rem] h-[30rem] rounded-full bg-primary-container opacity-10 blur-3xl mix-blend-multiply"></div>
+      <AnimatedGradientBackground
+        Breathing
+        gradientColors={["#f8fafc", "#ede9fe", "#dbeafe", "#f0fdf4", "#fef9c3", "#ede9fe", "#f8fafc"]}
+        gradientStops={[30, 45, 58, 70, 82, 92, 100]}
+        startingGap={120}
+        breathingRange={6}
+        animationSpeed={0.015}
+        containerClassName="opacity-70"
+      />
 
       <main className="w-full max-w-7xl mx-auto flex flex-col items-center justify-center flex-grow relative z-10 py-12">
         <div className="text-center mb-16 md:mb-20">

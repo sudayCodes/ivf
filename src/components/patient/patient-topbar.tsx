@@ -1,7 +1,5 @@
 import { Bell, Flower2 } from "lucide-react";
 
-import { patientUser } from "@/lib/mock-patient-data";
-
 export function PatientTopbar() {
   return (
     <header className="fixed top-0 z-40 flex h-16 w-full items-center justify-between bg-white px-6 shadow-sm">
@@ -17,7 +15,7 @@ export function PatientTopbar() {
           <Bell className="size-5" />
         </button>
         <div className="flex size-9 items-center justify-center rounded-full bg-gradient-to-br from-emerald-500 to-emerald-600 text-xs font-bold text-white shadow-sm">
-          {patientUser.initials}
+          PT
         </div>
       </div>
     </header>

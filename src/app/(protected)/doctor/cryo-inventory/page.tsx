@@ -1,9 +1,36 @@
 import { Snowflake } from "lucide-react";
 
+import { supabaseServer } from "@/lib/supabase";
 import { StatusBadge } from "@/components/patient/status-badge";
-import { cryoSamples, cryoTanks } from "@/lib/mock-doctor-data";
 
-export default function DoctorCryoInventoryPage() {
+const CRYO_TANKS = [
+  { id: "TANK-04", temp: "-196°C", capacity: 62.5, alert: false, occupied: 5 },
+  { id: "TANK-05", temp: "-192°C", capacity: 87.5, alert: true, occupied: 7 },
+  { id: "TANK-06", temp: "-196°C", capacity: 12.5, alert: false, occupied: 1 },
+  { id: "TANK-07", temp: "-196°C", capacity: 50, alert: false, occupied: 4 },
+];
+
+export default async function DoctorCryoInventoryPage() {
+  const { data: rawSamples } = await supabaseServer
+    .from("cryo_samples")
+    .select("id, sample_type, quality_grade, storage_location, freeze_date, thaw_status, patients(first_name, last_name)")
+    .order("created_at", { ascending: false });
+
+  const samples = (rawSamples ?? []).map((s: any) => {
+    const patient = s.patients as { first_name: string; last_name: string } | null;
+    return {
+      id: s.id,
+      patient: patient ? `${patient.first_name} ${patient.last_name}` : "Unknown Patient",
+      specimen: s.sample_type ?? "EMBRYO",
+      grade: s.quality_grade ?? "—",
+      location: s.storage_location ?? "—",
+      freezeDate: s.freeze_date
+        ? new Date(s.freeze_date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+        : "—",
+      status: s.thaw_status === "THAWED" ? "Thawed" : s.thaw_status === null ? "Stored" : "Processing",
+    };
+  });
+
   return (
     <div className="space-y-6 bg-background text-on-surface">
       <header className="flex flex-wrap items-end justify-between gap-3">
@@ -35,7 +62,7 @@ export default function DoctorCryoInventoryPage() {
           </div>
 
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            {cryoTanks.map((tank) => (
+            {CRYO_TANKS.map((tank) => (
               <article key={tank.id} className="rounded-lg border border-surface-dim/30 bg-surface p-4 shadow-sm">
                 <div className="mb-4 flex items-start justify-between">
                   <p className="text-[10px] font-black text-primary">{tank.id}</p>
@@ -77,7 +104,7 @@ export default function DoctorCryoInventoryPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-[10px] uppercase tracking-wider text-on-surface-variant">Total Samples</p>
-                  <p className="text-2xl font-black text-on-surface">14,208</p>
+                  <p className="text-2xl font-black text-on-surface">{samples.length}</p>
                 </div>
                 <div className="rounded bg-primary/20 p-2 text-primary"><Snowflake className="size-4" /></div>
               </div>
@@ -92,12 +119,12 @@ export default function DoctorCryoInventoryPage() {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="rounded border border-surface-dim/30 bg-surface p-3 shadow-sm">
-                  <p className="text-[9px] uppercase tracking-widest text-on-surface-variant">Frozen Today</p>
-                  <p className="text-lg font-bold text-on-surface">+24</p>
+                  <p className="text-[9px] uppercase tracking-widest text-on-surface-variant">Frozen</p>
+                  <p className="text-lg font-bold text-on-surface">{samples.filter((s) => s.status === "Stored").length}</p>
                 </div>
                 <div className="rounded border border-surface-dim/30 bg-surface p-3 shadow-sm">
-                  <p className="text-[9px] uppercase tracking-widest text-on-surface-variant">Thawed Today</p>
-                  <p className="text-lg font-bold text-on-surface">-12</p>
+                  <p className="text-[9px] uppercase tracking-widest text-on-surface-variant">Thawed</p>
+                  <p className="text-lg font-bold text-on-surface">{samples.filter((s) => s.status === "Thawed").length}</p>
                 </div>
               </div>
             </div>
@@ -109,50 +136,54 @@ export default function DoctorCryoInventoryPage() {
         <div className="border-b border-surface-low px-6 py-4">
           <h3 className="text-sm font-bold uppercase tracking-widest text-on-surface">Specimen Registry</h3>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[900px] text-left">
-            <thead className="bg-surface text-[10px] uppercase tracking-widest text-on-surface-variant">
-              <tr>
-                <th className="px-6 py-4">Patient / Identifier</th>
-                <th className="px-6 py-4">Specimen Type</th>
-                <th className="px-6 py-4 text-center">Grade</th>
-                <th className="px-6 py-4">Location Code</th>
-                <th className="px-6 py-4">Freeze Date</th>
-                <th className="px-6 py-4">Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-surface-low text-sm">
-              {cryoSamples.map((sample) => (
-                <tr key={sample.id} className="hover:bg-surface transition-colors duration-200">
-                  <td className="px-6 py-4">
-                    <p className="font-bold text-on-surface">{sample.patient}</p>
-                    <p className="text-[10px] tracking-wider text-on-surface-variant">REF: {sample.id}</p>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className="rounded bg-primary/15 px-2 py-1 text-[10px] font-bold uppercase tracking-tight text-primary">
-                      {sample.specimen}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-center font-black text-on-surface">{sample.grade}</td>
-                  <td className="px-6 py-4 font-mono text-xs text-primary">{sample.location}</td>
-                  <td className="px-6 py-4 text-xs text-on-surface-variant">{sample.freezeDate}</td>
-                  <td className="px-6 py-4">
-                    <StatusBadge
-                      label={sample.status}
-                      tone={
-                        sample.status === "Stored"
-                          ? "success"
-                          : sample.status === "Processing"
-                            ? "warning"
-                            : "danger"
-                      }
-                    />
-                  </td>
+        {samples.length === 0 ? (
+          <div className="px-6 py-10 text-center text-sm text-on-surface-variant">No specimens found.</div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[900px] text-left">
+              <thead className="bg-surface text-[10px] uppercase tracking-widest text-on-surface-variant">
+                <tr>
+                  <th className="px-6 py-4">Patient / Identifier</th>
+                  <th className="px-6 py-4">Specimen Type</th>
+                  <th className="px-6 py-4 text-center">Grade</th>
+                  <th className="px-6 py-4">Location Code</th>
+                  <th className="px-6 py-4">Freeze Date</th>
+                  <th className="px-6 py-4">Status</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody className="divide-y divide-surface-low text-sm">
+                {samples.map((sample) => (
+                  <tr key={sample.id} className="hover:bg-surface transition-colors duration-200">
+                    <td className="px-6 py-4">
+                      <p className="font-bold text-on-surface">{sample.patient}</p>
+                      <p className="text-[10px] tracking-wider text-on-surface-variant">REF: {sample.id}</p>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="rounded bg-primary/15 px-2 py-1 text-[10px] font-bold uppercase tracking-tight text-primary">
+                        {sample.specimen}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-center font-black text-on-surface">{sample.grade}</td>
+                    <td className="px-6 py-4 font-mono text-xs text-primary">{sample.location}</td>
+                    <td className="px-6 py-4 text-xs text-on-surface-variant">{sample.freezeDate}</td>
+                    <td className="px-6 py-4">
+                      <StatusBadge
+                        label={sample.status}
+                        tone={
+                          sample.status === "Stored"
+                            ? "success"
+                            : sample.status === "Processing"
+                              ? "warning"
+                              : "danger"
+                        }
+                      />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </section>
     </div>
   );

@@ -1,6 +1,7 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CheckCircle2, AlertTriangle, Clock } from "lucide-react";
 
 type NurseOption = { id: string; name: string };
@@ -437,43 +438,46 @@ export default function DoctorNurseCoordinationPage() {
         ) : totalTasks === 0 ? (
           <div className="rounded-lg bg-surface-lowest p-4 text-sm text-on-surface-variant">No tasks yet. Assign a task to get started.</div>
         ) : (
-          <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
-            <div className="space-y-4">
-              <div className="flex items-center justify-between px-1">
-                <h4 className="text-xs font-bold uppercase tracking-widest text-on-surface-variant">Pending</h4>
-                <span className="inline-block px-2 py-1 rounded-full bg-secondary/20 text-secondary text-xs font-bold">
+          <Tabs defaultValue="pending">
+            <TabsList>
+              <TabsTrigger value="pending">
+                Pending
+                <span className="ml-1.5 inline-flex items-center justify-center rounded-full bg-secondary/20 px-1.5 py-0.5 text-[10px] font-bold text-secondary">
                   {pendingTasks.length}
                 </span>
-              </div>
-              {pendingTasks.map((task) => (
-                <TaskCard key={task.id} {...task} />
-              ))}
-            </div>
-
-            <div className="space-y-4">
-              <div className="flex items-center justify-between px-1">
-                <h4 className="text-xs font-bold uppercase tracking-widest text-tertiary">In Progress</h4>
-                <span className="inline-block px-2 py-1 rounded-full bg-tertiary/20 text-tertiary text-xs font-bold">
+              </TabsTrigger>
+              <TabsTrigger value="in_progress">
+                In Progress
+                <span className="ml-1.5 inline-flex items-center justify-center rounded-full bg-tertiary/20 px-1.5 py-0.5 text-[10px] font-bold text-tertiary">
                   {progressTasks.length}
                 </span>
-              </div>
-              {progressTasks.map((task) => (
-                <TaskCard key={task.id} {...task} />
-              ))}
-            </div>
-
-            <div className="space-y-4">
-              <div className="flex items-center justify-between px-1">
-                <h4 className="text-xs font-bold uppercase tracking-widest text-green-700">Completed</h4>
-                <span className="inline-block px-2 py-1 rounded-full bg-green-100 text-green-700 text-xs font-bold">
+              </TabsTrigger>
+              <TabsTrigger value="completed">
+                Completed
+                <span className="ml-1.5 inline-flex items-center justify-center rounded-full bg-green-100 px-1.5 py-0.5 text-[10px] font-bold text-green-700">
                   {completedTasks.length}
                 </span>
-              </div>
-              {completedTasks.map((task) => (
-                <TaskCard key={task.id} {...task} />
-              ))}
-            </div>
-          </div>
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="pending" className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {pendingTasks.length === 0 ? (
+                <p className="col-span-3 text-sm text-on-surface-variant py-4">No pending tasks.</p>
+              ) : pendingTasks.map((task) => <TaskCard key={task.id} {...task} />)}
+            </TabsContent>
+
+            <TabsContent value="in_progress" className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {progressTasks.length === 0 ? (
+                <p className="col-span-3 text-sm text-on-surface-variant py-4">No tasks in progress.</p>
+              ) : progressTasks.map((task) => <TaskCard key={task.id} {...task} />)}
+            </TabsContent>
+
+            <TabsContent value="completed" className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {completedTasks.length === 0 ? (
+                <p className="col-span-3 text-sm text-on-surface-variant py-4">No completed tasks.</p>
+              ) : completedTasks.map((task) => <TaskCard key={task.id} {...task} />)}
+            </TabsContent>
+          </Tabs>
         )}
       </section>
     </div>

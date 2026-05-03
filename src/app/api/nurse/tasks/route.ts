@@ -3,6 +3,10 @@ import { supabaseServer } from "@/lib/supabase";
 
 export async function GET(request: NextRequest) {
   try {
+    if (!supabaseServer) {
+      return NextResponse.json([]);
+    }
+
     const token = request.cookies.get("sb-auth-token")?.value;
     const isDevMode = process.env.NODE_ENV === "development";
 

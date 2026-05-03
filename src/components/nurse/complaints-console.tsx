@@ -4,45 +4,25 @@ import { useMemo, useState } from "react";
 import { X, AlertCircle } from "lucide-react";
 
 import { StatusBadge } from "@/components/patient/status-badge";
-import { nurseComplaints } from "@/lib/mock-nurse-data";
-import { complaints as patientComplaints } from "@/lib/mock-patient-data";
 
 interface ComplaintsConsoleProps {
   complaints?: any[];
 }
 
 export function ComplaintsConsole({ complaints: passedComplaints }: ComplaintsConsoleProps) {
-  // Use passed complaints or merge mock data as fallback
   const mergedComplaints = useMemo(() => {
-    if (passedComplaints && passedComplaints.length > 0) {
-      // Format real complaints from API
-      return passedComplaints.map((c) => ({
-        ...c,
-        id: c.id || c.patient_id,
-        source: "Patient Submitted" as const,
-        severity: c.severity || "Medium" as const,
-        dateReported: c.created_at || new Date().toISOString(),
-        complaint: c.description,
-        patient: c.patients?.[0]?.first_name + " " + c.patients?.[0]?.last_name || "Unknown",
-        patientName: c.patients?.[0]?.first_name + " " + c.patients?.[0]?.last_name || "Unknown",
-        patientId: c.patient_id,
-        category: c.category || "General",
-      })).sort(
-        (a, b) => new Date(b.dateReported).getTime() - new Date(a.dateReported).getTime()
-      );
-    }
-
-    // Fallback to mock data
-    const patientSubmitted = patientComplaints.map((c) => ({
+    return (passedComplaints ?? []).map((c: any) => ({
       ...c,
+      id: c.id || c.patient_id,
       source: "Patient Submitted" as const,
-      severity: c.severity || "Medium" as const,
-      dateReported: c.datetime,
-      complaint: c.description,
-      patient: c.patientName,
-      category: c.category || "General",
-    }));
-    return [...nurseComplaints, ...patientSubmitted].sort(
+      severity: c.severity || "Medium",
+      dateReported: c.created_at || new Date().toISOString(),
+      complaint: c.complaint_text || c.description || "",
+      patient: c.patient_id || "Unknown",
+      patientName: c.patient_id || "Unknown",
+      patientId: c.patient_id,
+      category: "General",
+    })).sort(
       (a, b) => new Date(b.dateReported).getTime() - new Date(a.dateReported).getTime()
     );
   }, [passedComplaints]);

@@ -6,6 +6,10 @@ export async function GET(
   { params }: { params: Promise<{ patientId: string }> }
 ) {
   try {
+    if (!supabaseServer) {
+      return NextResponse.json({ error: "Database not configured" }, { status: 503 });
+    }
+
     const token = request.cookies.get("sb-auth-token")?.value;
 
     if (!token) {

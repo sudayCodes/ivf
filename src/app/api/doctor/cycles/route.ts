@@ -3,6 +3,10 @@ import { supabaseServer } from "@/lib/supabase";
 
 export async function POST(request: NextRequest) {
   try {
+    if (!supabaseServer) {
+      return NextResponse.json({ error: "Database not configured" }, { status: 503 });
+    }
+
     const token = request.cookies.get("sb-auth-token")?.value;
     if (!token) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -77,6 +81,10 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
+    if (!supabaseServer) {
+      return NextResponse.json({ success: true, data: [] });
+    }
+
     const token = request.cookies.get("sb-auth-token")?.value;
     if (!token) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

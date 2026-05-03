@@ -3,15 +3,15 @@ import { supabaseServer } from "@/lib/supabase";
 
 const fallbackPatients = [
   {
-    id: ""22222222-2222-2222-2222-222222222222"",
-    first_name: ""Demo"",
-    last_name: ""Patient"",
-    email: ""demo.patient@example.com"",
-    phone: ""555-010-0001"",
-    date_of_birth: ""1990-01-01"",
+    id: "22222222-2222-2222-2222-222222222222",
+    first_name: "Demo",
+    last_name: "Patient",
+    email: "demo.patient@example.com",
+    phone: "555-010-0001",
+    date_of_birth: "1990-01-01",
     age: 34,
-    gender: ""FEMALE"",
-    blood_type: ""O+""
+    gender: "FEMALE",
+    blood_type: "O+"
   }
 ];
 
@@ -40,6 +40,10 @@ export async function GET(request: NextRequest) {
     }
 
     // Authenticated flow
+    if (!supabaseServer) {
+      return NextResponse.json({ data: [], success: true, count: 0 });
+    }
+
     const { data: authData } = await supabaseServer.auth.getUser(token);
     if (!authData.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

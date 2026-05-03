@@ -1,10 +1,40 @@
 import { Search } from "lucide-react";
 
+import { supabaseServer } from "@/lib/supabase";
 import { StatusBadge } from "@/components/patient/status-badge";
 import { Button } from "@/components/ui/button";
-import { labQueue } from "@/lib/mock-nurse-data";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
-export default function NurseLabReportsPage() {
+export default async function NurseLabReportsPage() {
+  const { data: results } = await supabaseServer
+    .from("medical_results")
+    .select("id, result_type, result_date, interpretation, patients(first_name, last_name)")
+    .order("result_date", { ascending: false })
+    .limit(20);
+
+  const queue = (results ?? []).map((r: any) => {
+    const patient = r.patients as { first_name: string; last_name: string } | null;
+    const hasInterpretation = !!r.interpretation;
+    return {
+      id: r.id,
+      file: `${r.result_type ?? "LabResult"}_${r.id.slice(0, 6).toUpperCase()}.pdf`,
+      patient: patient ? `${patient.first_name} ${patient.last_name}` : "Unknown Patient",
+      mrn: r.id.slice(0, 8).toUpperCase(),
+      status: hasInterpretation ? "Ready for Review" : "Processing",
+      action: hasInterpretation ? "Forward to Doctor" : "Processing",
+    };
+  });
+
+  const ready = queue.filter((q) => q.status === "Ready for Review").length;
+  const inProgress = queue.filter((q) => q.status === "Processing").length;
+
   return (
     <div className="space-y-8">
       <header>
@@ -31,7 +61,7 @@ export default function NurseLabReportsPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div className="rounded-lg bg-slate-200 p-4">
                   <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Ordered By</p>
-                  <p className="text-sm font-semibold text-slate-800">Dr. Amelia Thorne</p>
+                  <p className="text-sm font-semibold text-slate-800">Dr. Attending</p>
                 </div>
                 <div className="rounded-lg bg-slate-200 p-4">
                   <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Priority</p>
@@ -54,52 +84,54 @@ export default function NurseLabReportsPage() {
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-bold text-[#1A237E]">Parsing Queue</h2>
             <div className="flex gap-2">
-              <StatusBadge label="2 In Progress" tone="warning" />
-              <StatusBadge label="3 Completed" tone="success" />
+              <StatusBadge label={`${inProgress} In Progress`} tone="warning" />
+              <StatusBadge label={`${ready} Ready`} tone="success" />
             </div>
           </div>
 
           <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-            <table className="w-full min-w-[760px] text-left">
-              <thead className="bg-slate-100 text-[10px] font-black uppercase tracking-[0.15em] text-slate-500">
-                <tr>
-                  <th className="px-6 py-4">Document</th>
-                  <th className="px-4 py-4">Patient / MRN</th>
-                  <th className="px-4 py-4">Parsing Status</th>
-                  <th className="px-6 py-4 text-right">Action</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-200/60">
-                {labQueue.map((row) => (
-                  <tr key={row.id} className="hover:bg-slate-50">
-                    <td className="px-6 py-4">
-                      <p className="text-sm font-bold text-slate-900">{row.file}</p>
-                    </td>
-                    <td className="px-4 py-4">
-                      <p className="text-sm font-semibold text-slate-800">{row.patient}</p>
-                      <p className="text-[10px] font-bold text-slate-500">{row.mrn}</p>
-                    </td>
-                    <td className="px-4 py-4">
-                      <StatusBadge
-                        label={row.status}
-                        tone={
-                          row.status === "Ready for Review"
-                            ? "success"
-                            : row.status === "Parsing Error"
-                              ? "danger"
-                              : "warning"
-                        }
-                      />
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <button className="rounded-md bg-[#1A237E] px-4 py-2 text-[10px] font-bold uppercase tracking-wider text-white hover:bg-[#111a63]">
-                        {row.action}
-                      </button>
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-slate-100 hover:bg-slate-100">
+                  <TableHead className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.15em] text-slate-500">Document</TableHead>
+                  <TableHead className="px-4 py-4 text-[10px] font-black uppercase tracking-[0.15em] text-slate-500">Patient / MRN</TableHead>
+                  <TableHead className="px-4 py-4 text-[10px] font-black uppercase tracking-[0.15em] text-slate-500">Parsing Status</TableHead>
+                  <TableHead className="px-6 py-4 text-right text-[10px] font-black uppercase tracking-[0.15em] text-slate-500">Action</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {queue.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} className="px-6 py-8 text-center text-sm text-slate-500">
+                      No lab results in queue.
                     </td>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                ) : (
+                  queue.map((row) => (
+                    <TableRow key={row.id} className="hover:bg-slate-50">
+                      <TableCell className="px-6 py-4">
+                        <p className="text-sm font-bold text-slate-900">{row.file}</p>
+                      </TableCell>
+                      <TableCell className="px-4 py-4">
+                        <p className="text-sm font-semibold text-slate-800">{row.patient}</p>
+                        <p className="text-[10px] font-bold text-slate-500">{row.mrn}</p>
+                      </TableCell>
+                      <TableCell className="px-4 py-4">
+                        <StatusBadge
+                          label={row.status}
+                          tone={row.status === "Ready for Review" ? "success" : "warning"}
+                        />
+                      </TableCell>
+                      <TableCell className="px-6 py-4 text-right">
+                        <button className="rounded-md bg-[#1A237E] px-4 py-2 text-[10px] font-bold uppercase tracking-wider text-white hover:bg-[#111a63]">
+                          {row.action}
+                        </button>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
           </div>
 
           <div className="rounded-xl bg-[#1A237E] p-6 text-white">
