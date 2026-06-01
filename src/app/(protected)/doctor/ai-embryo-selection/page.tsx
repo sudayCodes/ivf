@@ -3,31 +3,41 @@
 import { useState, useRef } from 'react'
 import { Brain, GitCompareArrows, Upload, X, AlertCircle, Loader2 } from 'lucide-react'
 
-// ── Types matching STORK-V API response ────────────────────────────────────
+// ── Types matching embryo-ai-backend API response ──────────────────────────
 interface EmbryoResult {
-  blastocystScore: number    // Gardner scale 3–14
-  expansionScore: number     // 0–1
-  icmScore: number           // 0–1
-  trophectodermScore: number // 0–1
-  euploidProbablity: number  // 0–1
+  blastocystScore: number
+  expansionScore: number
+  icmScore: number
+  trophectodermScore: number
+  euploidProbablity: number
   euploidPrediction: boolean
+  framesUsed?: number
+  framesTotal?: number
+}
+
+interface TopFrame {
+  rank: number
+  image: string          // base64 data URL
+  euploidProbability: number
+  grade: string
 }
 
 interface StorkPrediction {
   lrEupAnu: EmbryoResult
   lrEupCxa: EmbryoResult
+  topFrames?: TopFrame[]
 }
 
-// ── Map STORK scores to display values ─────────────────────────────────────
+// ── Map embryo scores to display values ────────────────────────────────────
 function toAIScore(prob: number) {
   return Math.round(prob * 100)
 }
 
-function toGrade(bs: number, icm: number, te: number): string {
-  const expansion = bs <= 4 ? bs : bs <= 5 ? 5 : bs <= 6 ? 6 : 7
+function toGrade(expansionScore: number, icm: number, te: number): string {
+  const stage    = Math.min(6, Math.max(1, Math.round(expansionScore)))
   const icmGrade = icm >= 0.7 ? 'A' : icm >= 0.5 ? 'B' : 'C'
   const teGrade  = te  >= 0.7 ? 'A' : te  >= 0.5 ? 'B' : 'C'
-  return `${expansion}${icmGrade}${teGrade}`
+  return `${stage}${icmGrade}${teGrade}`
 }
 
 function icmLabel(score: number) {
@@ -60,16 +70,21 @@ function EmbryoCard({
   result,
   wellId,
   previewUrls,
+  topFrames,
 }: {
   label: string
   result: EmbryoResult
   wellId: string
   previewUrls: string[]
+  topFrames?: TopFrame[]
 }) {
   const aiScore = toAIScore(result.euploidProbablity)
-  const grade = toGrade(result.blastocystScore, result.icmScore, result.trophectodermScore)
-  // Pick the middle frame as the hero image
-  const heroUrl = previewUrls[Math.floor(previewUrls.length / 2)] ?? null
+  const grade = toGrade(result.expansionScore, result.icmScore, result.trophectodermScore)
+  // Prefer backend base64 frames (works for video uploads); fall back to blob URLs for plain images
+  const displayImages = (topFrames && topFrames.length > 0) ? topFrames.map(f => f.image) : previewUrls
+  // Hero = the frame the model ranked #1 (highest euploid probability)
+  const bestFrame = topFrames?.find(f => f.rank === 1)
+  const heroUrl = bestFrame?.image ?? displayImages[Math.floor(displayImages.length / 2)] ?? null
 
   return (
     <article
@@ -104,17 +119,22 @@ function EmbryoCard({
         )}
 
         {/* Film-strip thumbnails */}
-        {previewUrls.length > 0 && (
+        {displayImages.length > 0 && (
           <div className="absolute bottom-16 left-4 right-4 z-10 flex gap-1 overflow-x-auto">
-            {previewUrls.map((url, i) => (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                key={i}
-                src={url}
-                alt={`frame ${i + 1}`}
-                className="h-8 w-8 shrink-0 rounded border border-white/30 object-cover opacity-80"
-              />
-            ))}
+            {displayImages.map((url, i) => {
+              const isBest = topFrames ? topFrames[i]?.rank === 1 : false
+              return (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  key={i}
+                  src={url}
+                  alt={`frame ${i + 1}`}
+                  className={`h-8 w-8 shrink-0 rounded object-cover opacity-80 ${
+                    isBest ? 'border-2 border-primary' : 'border border-white/30'
+                  }`}
+                />
+              )
+            })}
           </div>
         )}
 
@@ -137,13 +157,21 @@ function EmbryoCard({
         </div>
       </div>
 
+
       <div className="flex items-center justify-between bg-surface p-4">
         <span className="text-xs font-bold uppercase tracking-widest text-on-surface">
           Well: {wellId}
         </span>
-        <button className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest text-primary hover:underline">
-          <GitCompareArrows className="size-3.5" /> Add to Compare
-        </button>
+        <div className="flex items-center gap-3">
+          {result.framesUsed != null && result.framesTotal != null && (
+            <span className="text-[9px] uppercase tracking-widest text-on-surface-variant">
+              {result.framesUsed}/{result.framesTotal} frames
+            </span>
+          )}
+          <button className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest text-primary hover:underline">
+            <GitCompareArrows className="size-3.5" /> Add to Compare
+          </button>
+        </div>
       </div>
     </article>
   )
@@ -212,7 +240,7 @@ export default function DoctorAIEmbryoSelectionPage() {
       }
       setPrediction(json as StorkPrediction)
     } catch {
-      setError('Could not reach STORK-V backend. Is it running on port 8080?')
+      setError('Could not reach embryo-ai-backend. Is it running on port 8081?')
     } finally {
       setLoading(false)
     }
@@ -286,7 +314,7 @@ export default function DoctorAIEmbryoSelectionPage() {
               <input
                 ref={fileInputRef}
                 type="file"
-                accept=".jpg,.jpeg,.png"
+                accept=".jpg,.jpeg,.png,.mp4,.mov,.avi,.mkv,.webm"
                 multiple
                 className="hidden"
                 onChange={e => handleFiles(e.target.files)}
@@ -304,7 +332,7 @@ export default function DoctorAIEmbryoSelectionPage() {
 
           {/* Filename hint */}
           <p className="mb-3 text-[10px] text-on-surface-variant">
-            Upload 1 or more blastocyst images (.jpg or .png). Multiple images are averaged for a more robust prediction.
+            Upload blastocyst images (.jpg / .png) <strong>or a time-lapse video</strong> (.mp4, .mov, .avi). Videos are automatically split into frames — top-scoring frames are highlighted in the results.
           </p>
 
           {/* File list */}
@@ -349,13 +377,62 @@ export default function DoctorAIEmbryoSelectionPage() {
               result={prediction.lrEupAnu}
               wellId="lrEupAnu"
               previewUrls={previewUrls}
+              topFrames={prediction.topFrames}
             />
             <EmbryoCard
               label="EUP / CxA Model"
               result={prediction.lrEupCxa}
               wellId="lrEupCxa"
               previewUrls={previewUrls}
+              topFrames={prediction.topFrames}
             />
+          </section>
+        )}
+
+        {/* Top-scoring video frames */}
+        {prediction?.topFrames && prediction.topFrames.length > 0 && (
+          <section className="rounded-lg border border-surface-dim/30 bg-surface-lowest p-5 shadow-sm">
+            <h3 className="mb-1 text-sm font-bold uppercase tracking-widest text-on-surface">
+              Top-Scoring Frames
+            </h3>
+            <p className="mb-4 text-[10px] text-on-surface-variant">
+              Frames ranked by individual euploid probability — highest AI score first.
+            </p>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-5">
+              {prediction.topFrames.map(frame => (
+                <div
+                  key={frame.rank}
+                  className={`relative overflow-hidden rounded-lg border ${
+                    frame.rank === 1
+                      ? 'border-primary shadow-[0_0_12px_rgba(63,81,181,0.3)]'
+                      : 'border-surface-dim/30'
+                  } bg-surface`}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={frame.image}
+                    alt={`Frame rank ${frame.rank}`}
+                    className="aspect-square w-full object-cover"
+                  />
+                  {frame.rank === 1 && (
+                    <span className="absolute left-1.5 top-1.5 rounded bg-primary px-1.5 py-0.5 text-[9px] font-black uppercase tracking-tight text-primary-foreground">
+                      Best
+                    </span>
+                  )}
+                  <div className="p-2">
+                    <p className="text-[10px] font-black text-primary">
+                      {Math.round(frame.euploidProbability * 100)}%
+                    </p>
+                    <p className="text-[9px] text-on-surface-variant">
+                      Grade: {frame.grade}
+                    </p>
+                    <p className="text-[9px] text-on-surface-variant/60">
+                      #{frame.rank}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
           </section>
         )}
       </main>
@@ -462,7 +539,7 @@ export default function DoctorAIEmbryoSelectionPage() {
           <div className="mt-4 flex items-center gap-2 rounded border border-primary/20 bg-primary/10 p-3 text-[11px] text-primary">
             <Brain className="size-4" />
             {prediction
-              ? 'BELA predictions powered by STORK-V (live backend).'
+              ? 'BELA predictions powered by embryo-ai-backend (live).'
               : 'AI model calibrated with 12,480 historical embryo outcomes.'}
           </div>
         </div>
